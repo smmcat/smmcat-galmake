@@ -337,6 +337,7 @@ export function apply(ctx: Context, config: Config) {
       let end = false;
       let indePath = [];
       let PathName = [];
+      let name = ''
       let change = false;
       if (!goal) {
         callback && callback({ selectMenu, lastPath: '', change, crumbs: '', end });
@@ -345,17 +346,18 @@ export function apply(ctx: Context, config: Config) {
       let title = null;
       const indexList = goal.split('-').map(item => Number(item));
       indexList.some((item: number) => {
+        name = selectMenu[item - 1].name;
         // 储存路径值
         indePath.push(item);
-        PathName.push(selectMenu[item - 1]?.name.length > 6 ? selectMenu[item - 1]?.name.slice(0, 6) + '...' : selectMenu[item - 1]?.name);
+        PathName.push(selectMenu[item - 1]?.length > 6 ? selectMenu[item - 1].name?.slice(0, 6) + '...' : selectMenu[item - 1].name);
         title = selectMenu[item - 1]?.title || null;
         // 超过范围
-        if (selectMenu.length < item) {
+        if (selectMenu?.length < item) {
           selectMenu = undefined;
           // 还原正确路径值
           indePath.pop();
           PathName.pop();
-          callback && callback({ selectMenu, lastPath: indePath.join('-'), change, crumbs: PathName.slice(-3).reverse().join('<'), end });
+          callback && callback({ name, selectMenu, lastPath: indePath.join('-'), change, crumbs: PathName.slice(-3).reverse().join('<'), end });
           return true;
         }
         // 如果是菜单对象列表
@@ -364,12 +366,12 @@ export function apply(ctx: Context, config: Config) {
           // 如果下级是内容区
           if (typeof selectMenu === "string") {
             end = true;
-            callback && callback({ selectMenu, lastPath: indePath.join('-'), change, crumbs: PathName.slice(-3).reverse().join('<'), end });
+            callback && callback({ name, selectMenu, lastPath: indePath.join('-'), change, crumbs: PathName.slice(-3).reverse().join('<'), end });
             return true;
           }
         }
       });
-      end || callback && callback({ selectMenu, title, lastPath: indePath.join('-'), change, crumbs: PathName.reverse().slice(-3).join('<'), end });
+      end || callback && callback({ name, selectMenu, title, lastPath: indePath.join('-'), change, crumbs: PathName.slice(-3).reverse().join('<'), end });
     },
     // 菜单渲染到界面
     markScreen(pathLine: string, session) {
@@ -411,6 +413,12 @@ export function apply(ctx: Context, config: Config) {
           err: true,
         };
       }
+      if (goalItem.name?.includes('__discard')) {
+        return {
+          msg: '',
+          err: true,
+        };
+      }
       if (goalItem.end) {
         return {
           msg: (h.select(goalItem.selectMenu || '', 'img').length > 0 ? '' : "【内容】\n") +
@@ -425,7 +433,8 @@ export function apply(ctx: Context, config: Config) {
         return {
           msg: (h.select(goalItem.title || '', 'img').length > 0 ? '' : "【内容】\n") +
             (goalItem.title ? `${goalItem.title.replace(/\\/g, '')}\n\n` : '') +
-            `${goalItem.selectMenu.map((item) => item.name).join('\n') + '\n\n0 退出'}` +
+            `${goalItem.selectMenu.map((item) => item.name.includes('__discard') ? null : item.name).filter(item => item !== null).join('\n')
+            + '\n\n0 退出'}` +
             `\n----------------------------\n` +
             (goalItem.crumbs ? `[当前位置]\n` + `${goalItem.crumbs}\n` : '序章\n'),
           err: false,
