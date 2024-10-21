@@ -1,8 +1,9 @@
-
 import { Context, Schema, h } from 'koishi';
+import { } from 'koishi-plugin-smmcat-localstorage'
 import fs from 'fs/promises';
 import path from 'path';
 import { createPathMapByDir, createDirMapByObject } from './mapTool';
+
 export const name = 'smmcat-galmake'
 import { } from 'koishi-plugin-word-core';
 
@@ -10,6 +11,7 @@ export interface Config {
   mapAddress: string;
   overtime: number;
   debug: boolean;
+  tipsProp: boolean;
 }
 
 export const usage = `
@@ -26,7 +28,10 @@ export const usage = `
 - %jumpByCheckProp%标识符，通过查询是否携带持有物才可跳转分支，参数示例：%jumpByCheckProp|金币*4?1-1-1%
 - %getProp%标识符，获得道具 参数示例：%getProp|金币*4%
 - %lostProp%标识符，失去道具 参数示例：%getProp|金币*4%
+- %getAchievements%标识符，获得成就 用户在该分支下将获得对应成就名的成就 参考示例：%getAchievements|冒险王%
+    
 
+从 0.1.0 版本后，需要使用 [smmcat-localstorage](/market?keyword=smmcat-localstorage) 服务来实现本地化存档操作，用于重启 Koishi 后仍然保留玩家数据
 当启用[word-core](/market?keyword=word-core)与[word-core-grammar-basic](/market?keyword=word-core-grammar-basic)插件后，可以将回复接入词库解析
 ***
 如果你对 galgame 感兴趣，或者想一起写剧本；[欢迎加群](https://qm.qq.com/q/i1OHiS7aD0)
@@ -35,10 +40,12 @@ export const usage = `
 export const Config: Schema<Config> = Schema.object({
   mapAddress: Schema.string().default('./data/galmake').description('剧本结构放置位置'),
   overtime: Schema.number().default(30000).description('对话访问的超时时间'),
-  debug: Schema.boolean().default(false).description('日志查看更多信息')
+  debug: Schema.boolean().default(false).description('日志查看更多信息'),
+  tipsProp: Schema.boolean().default(true).description('当不满足要求将提示所需要的物品')
 });
 
 export const inject = {
+  required: ['localstorage'],
   optional: ['word']
 };
 
@@ -47,7 +54,7 @@ export function apply(ctx: Context, config: Config) {
   const addTemplate = async (upath) => {
     const obj = [
       {
-        name: "5.剧本演示",
+        name: "1.剧本演示",
         child: [
           {
             name: "1.睡一觉",
@@ -55,12 +62,12 @@ export function apply(ctx: Context, config: Config) {
               {
                 name: "1.返回 序章",
                 child: [],
-                title: "%jumpBranch|5%"
+                title: "%jumpBranch|1%"
               },
               {
                 name: "2.复活",
                 child: [],
-                title: "%jumpByLostProp|金币*11?5-2-3-2-1-1%"
+                title: "%jumpByLostProp|金币*11?1-2-3-2-1-1%"
               }
             ],
             title: "熟睡中饿死了，需要20金币复活，你选择..."
@@ -73,7 +80,7 @@ export function apply(ctx: Context, config: Config) {
                 child: [
                   {
                     name: "1.返回序章",
-                    child: "%jumpBranch|5%"
+                    child: "%jumpBranch|1%"
                   }
                 ],
                 title: "她们把你骗的连裤衩都没了"
@@ -83,7 +90,7 @@ export function apply(ctx: Context, config: Config) {
                 child: [
                   {
                     name: "1.返回序章",
-                    child: "%jumpBranch|5%"
+                    child: "%jumpBranch|1%"
                   }
                 ],
                 title: "她们把你打了一顿，抢劫跑人"
@@ -102,20 +109,20 @@ export function apply(ctx: Context, config: Config) {
                             child: [
                               {
                                 name: "1.返回序章",
-                                child: "%jumpBranch|5%"
+                                child: "%jumpBranch|1%"
                               }
                             ],
                             title: "因为太饿，吃太多撑死了。结束人生..."
                           }
                         ],
-                        title: "%jumpByCheckProp|金币?5-2-3-1-1-1%"
+                        title: "%jumpByCheckProp|金币?1-2-3-1-1-1%"
                       },
                       {
                         name: "2.没有 可以白给我吗",
                         child: [
                           {
                             name: "1.返回序章",
-                            child: "%jumpBranch|5%"
+                            child: "%jumpBranch|1%"
                           }
                         ],
                         title: "你被打了一顿，然后饿死街头"
@@ -134,20 +141,20 @@ export function apply(ctx: Context, config: Config) {
                             child: [
                               {
                                 name: "1.返回序章",
-                                child: "%jumpBranch|5%"
+                                child: "%jumpBranch|1%"
                               }
                             ],
                             title: "你在 %getTime% 成为了有钱人，在城市中活得滋润。"
                           }
                         ],
-                        title: "%jumpByLostProp|金币*11?5-2-3-2-1-1%"
+                        title: "%jumpByLostProp|金币*11?1-2-3-2-1-1%"
                       },
                       {
                         name: "2.去找工作",
                         child: [
                           {
                             name: "1.返回序章",
-                            child: "%jumpBranch|5%"
+                            child: "%jumpBranch|1%"
                           }
                         ],
                         title: "最后你成为了异世界的打工人"
@@ -177,6 +184,9 @@ export function apply(ctx: Context, config: Config) {
   const onlyOneTemp = {}
   // 持有缓存
   const takeIng = {}
+  // 用户成就
+  const achievements = {}
+
   // 转义符工具
   /**
    * 参数接收规则
@@ -208,7 +218,8 @@ export function apply(ctx: Context, config: Config) {
         userBranch[session.userId].pop()
         // 通知渲染层 重置界面
         ev.change = true
-        session.send('不满足要求，请重新选择')
+        const [prop, num] = dict[0].split('*')
+        session.send('不满足要求，请重新选择。' + (config.tipsProp ? `\ntip:需要提交${num || 1}个${prop}` : ''))
       }
     },
     // 通过查询是否存在持有物跳转分支 xxx>4?1-1-1
@@ -222,7 +233,8 @@ export function apply(ctx: Context, config: Config) {
         userBranch[session.userId].pop()
         // 通知渲染层 重置界面
         ev.change = true
-        session.send('不满足要求，请重新选择')
+        const [prop, num] = dict[0].split('*')
+        session.send('不满足要求，请重新选择。' + (config.tipsProp ? `\ntip:需要持有${num || 1}个${prop}` : ''))
       }
     }
     ,
@@ -234,7 +246,7 @@ export function apply(ctx: Context, config: Config) {
       if (!onlyOneTemp[session.userId]) {
         onlyOneTemp[session.userId] = []
       }
-      if (!onlyOneTemp[session.userId].includes(userBranch[session.userId].join('-'))) {
+      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join('-'))) {
         if (!takeIng[session.userId]) {
           takeIng[session.userId] = {}
         }
@@ -253,7 +265,7 @@ export function apply(ctx: Context, config: Config) {
       const prop = item[0]
       const num = isNaN(Number(item[1])) ? 1 : Number(item[1])
 
-      if (!onlyOneTemp[session.userId].includes(userBranch[session.userId].join('-'))) {
+      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join('-'))) {
         if (!this.querymentProp(session, prop, num || 1)) return false
         takeIng[session.userId][prop] -= num
         if (!takeIng[session.userId][prop]) {
@@ -276,6 +288,17 @@ export function apply(ctx: Context, config: Config) {
         return false
       }
       return true
+    },
+    // 获得成就 |初学者
+    getAchievements(session, prop) {
+      if (!achievements[session.userId]) {
+        achievements[session.userId] = {}
+      }
+      if (!achievements[session.userId][prop]) {
+        achievements[session.userId][prop] = this.getTime()
+        localStoreData.setLocalStoreData(session.userId) // 及时存档
+        session.send(`恭喜你获得成就！【${prop}】\n可在 /剧本成就 指令中查看`)
+      }
     }
   }
 
@@ -306,7 +329,7 @@ export function apply(ctx: Context, config: Config) {
       await this.initPath();
       this.mapInfo = createPathMapByDir(this.upath);
       config.debug && console.log(JSON.stringify(this.mapInfo, null, ' '));
-      config.debug && console.log("[smmcat-selfhelp]:自助菜单构建完成");
+      config.debug && console.log("[smmcat-galmake]:剧本姬构建完成");
     },
     getMenu(goal: string, callback?: (event) => void) {
 
@@ -412,16 +435,84 @@ export function apply(ctx: Context, config: Config) {
     }
   };
 
+  // 本地化存储方案
+  const localStoreData = {
+    upath: '',
+    ready: false,
+    async init() {
+      this.upath = path.join(ctx.localstorage.basePath, './smm-galmark')
+      try {
+        // 是否创建对应内容
+        await fs.access(this.upath);
+      } catch (error) {
+        try {
+          await fs.mkdir(this.upath, { recursive: true });
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      const dirList = await fs.readdir(this.upath)
+      const dict = { ok: 0, err: 0 }
+      const eventList = dirList.map((item) => {
+        return new Promise(async (resolve, rejects) => {
+          try {
+            const res = JSON.parse(await ctx.localstorage.getItem(`smm-galmark/${item}`) || "{}")
+            userBranch[item] = res.userBranch
+            onlyOneTemp[item] = res.onlyOneTemp
+            takeIng[item] = res.takeIng
+            achievements[item] = res.achievements
+            dict.ok++
+            resolve(true)
+          } catch (error) {
+            dict.err++
+            resolve(true)
+          }
+        })
+      })
+      await Promise.all(eventList)
+      this.ready = true
+      config.debug && console.log(`[smmcat-galmark]:读取用户本地数据完成，成功${dict.ok}个，失败${dict.err}个`);
+    },
+    // 记录存档
+    async setLocalStoreData(userId) {
+      if (!this.ready || !userId) return
+      const temp = {
+        userBranch: userBranch[userId] || [],
+        onlyOneTemp: onlyOneTemp[userId] || [],
+        takeIng: takeIng[userId] || {},
+        achievements: achievements[userId] || {}
+      }
+      config.debug && console.log(userId + '用户存储到本地记录');
+      await ctx.localstorage.setItem(`smm-galmark/${userId}`, JSON.stringify(temp))
+    },
+    // 清除记录
+    async clearLocalStoreData(userId) {
+      if (!this.ready || !userId) return
+      const temp = {
+        userBranch: [],
+        onlyOneTemp: [],
+        takeIng: {}
+      }
+      config.debug && console.log(userId + '用户清空本地记录');
+      await ctx.localstorage.setItem(`smm-galmark/${userId}`, JSON.stringify(temp))
+    }
+  }
+
   ctx.on('ready', () => {
     galplayMap.init();
+    localStoreData.init();
   });
 
   ctx
-    .command('开始剧情')
+    .command('剧本姬')
+  ctx
+    .command('剧本姬/开始剧情')
     .action(async ({ session }) => {
 
       if (!userBranch[session.userId]) {
         userBranch[session.userId] = [];
+        onlyOneTemp[session.userId] = [];
+        takeIng[session.userId] = {}
       }
       while (true) {
         config.debug && console.log('当前持有：' + takeIng[session.userId]);
@@ -446,6 +537,7 @@ export function apply(ctx: Context, config: Config) {
 
         const res = await session.prompt(config.overtime);
         if (res === undefined) {
+          await localStoreData.setLocalStoreData(session.userId)
           await session.send("长时间未操作，退出剧本，记录保留");
           break;
         }
@@ -454,7 +546,8 @@ export function apply(ctx: Context, config: Config) {
           continue;
         }
         if (res == '0') {
-          res == '0' && await session.send("已退出剧本，记录保留");
+          await localStoreData.setLocalStoreData(session.userId)
+          await session.send("已退出剧本，记录保留");
           break;
         }
         userBranch[session.userId].push(res);
@@ -467,7 +560,7 @@ export function apply(ctx: Context, config: Config) {
     });
 
   ctx
-    .command('重置进度')
+    .command('剧本姬/重置进度')
     .action(async ({ session }) => {
       if (!userBranch[session.userId]?.length) {
         await session.send('你的当前进度不需要重置')
@@ -478,21 +571,37 @@ export function apply(ctx: Context, config: Config) {
         userBranch[session.userId] = []
         onlyOneTemp[session.userId] = []
         takeIng[session.userId] = {}
+        await localStoreData.clearLocalStoreData(session.userId)
         await session.send('已重置当前进度')
       }
     })
 
   ctx
-    .command('当前持有')
+    .command('剧本姬/当前持有')
     .action(async ({ session }) => {
       const temp = takeIng[session.userId]
       if (!temp || !Object.keys(temp).length) {
         await session.send('你当进度中前还没有任何道具持有...')
+        return
       }
       const msg = Object.keys(temp).map(item => {
         return `【${item}】单位：${temp[item]}`
-      })
-      await session.send('你当前进度中持有:\n' + msg)
+      }).join('\n')
+      await session.send('你当前进度中持有:\n\n' + msg)
+    })
+
+  ctx
+    .command('剧本姬/剧本成就')
+    .action(async ({ session }) => {
+      const temp = achievements[session.userId]
+      if (!temp || !Object.keys(temp).length) {
+        await session.send('你当还没有得到任何成就...')
+        return
+      }
+      const msg = Object.keys(temp).map(item => {
+        return `【${item}】：${temp[item]}`
+      }).join('\n')
+      await session.send('你当前获得的成就和对应获取时间如下:\n\n' + msg)
     })
 }
 
