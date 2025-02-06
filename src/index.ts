@@ -38,6 +38,7 @@ export interface Config
   debug: boolean;
   tipsProp: boolean;
   showFaQ: boolean;
+  wordSave: string;
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -45,7 +46,8 @@ export const Config: Schema<Config> = Schema.object({
   overtime: Schema.number().default(3e4).description("对话访问的超时时间"),
   debug: Schema.boolean().default(false).description("日志查看更多信息"),
   tipsProp: Schema.boolean().default(true).description("当不满足要求将提示所需要的物品"),
-  showFaQ: Schema.boolean().default(true).description("显示所有 获得/失去 道具提示")
+  showFaQ: Schema.boolean().default(true).description("显示所有 获得/失去 道具提示"),
+  wordSave: Schema.string().default("smm").description("词库保存的数据库")
 });
 
 export const inject = {
@@ -400,6 +402,9 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         {
           selectMenu = selectMenu[item - 1].child;
           // this.mapInfo = selectMenu;
+          // 402的这一行似乎加入后
+          // 会导致最后一层回到初始层的时候386行报错，selectMenu为[]
+          // 而402如果不加入的话，似乎会导致无法使用，始终重复
 
           if (typeof selectMenu === "string")
           {
@@ -422,7 +427,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           // 提前解析词库
           if (ctx.word)
           {
-            const msg = await ctx.word.driver.parMsg(ev.selectMenu.concat(), { saveDB: "smm" }, session);
+            const msg = await ctx.word.driver.parMsg(ev.selectMenu.concat(), { saveDB: config.wordSave }, session);
             if (msg)
             {
               ev.selectMenu = msg;
@@ -445,7 +450,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           // 提前解析词库
           if (ctx.word)
           {
-            const msg = await ctx.word.driver.parMsg(ev.title.concat(), { saveDB: "smm" }, session);
+            const msg = await ctx.word.driver.parMsg(ev.title.concat(), { saveDB: config.wordSave }, session);
             if (msg)
             {
               ev.title = msg;
