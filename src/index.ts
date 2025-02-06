@@ -381,7 +381,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       }
       let title = null;
       const indexList = goal.split("-").map((item) => Number(item));
-      indexList.some((item) =>
+      indexList.some((item: number) =>
       {
         name2 = selectMenu[item - 1].name;
         indePath.push(item);
@@ -409,13 +409,23 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       end || callback && callback({ name: name2, selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
     },
     // 菜单渲染到界面
-    markScreen(pathLine, session)
+    markScreen(pathLine: string, session: Session)
     {
       let goalItem = { change: false };
-      this.getMenu(pathLine, (ev) =>
+      this.getMenu(pathLine, async (ev) =>
       {
         if (ev.end)
         {
+          // 提前解析词库
+          if (ctx.word)
+          {
+            const msg = await ctx.word.driver.parMsg(ev.selectMenu.concat(), { saveDB: "smm" }, session);
+            if (msg)
+            {
+              ev.selectMenu = msg;
+            }
+          }
+
           ev.selectMenu = ev.selectMenu.replace(/%([^%]*)%/g, (match, capture) =>
           {
             let result = "";
@@ -429,6 +439,16 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         }
         if (ev.title)
         {
+          // 提前解析词库
+          if (ctx.word)
+          {
+            const msg = await ctx.word.driver.parMsg(ev.title.concat(), { saveDB: "smm" }, session);
+            if (msg)
+            {
+              ev.title = msg;
+            }
+          }
+
           ev.title = ev.title.replace(/%([^%]*)%/g, (match, capture) =>
           {
             let result = "";
@@ -445,7 +465,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       return this.format(goalItem, session);
     },
     // 格式化界面输出
-    format(goalItem, session)
+    format(goalItem, session: Session)
     {
       if (goalItem.change)
         return this.markScreen(userBranch[session.userId].join("-"), session);
@@ -596,17 +616,8 @@ ${goalItem.crumbs}
         await session.send("操作不对，请重新输入：\n注意需要输入指定范围的下标");
         await session.send(data2.msg);
       }
-      if (ctx.word)
-      {
-        const msg = await ctx.word.driver.parMsg(data.msg, { saveDB: "smm" }, session);
-        if (msg)
-        {
-          await session.send(msg);
-        }
-      } else
-      {
-        await session.send(data.msg);
-      }
+
+      await session.send(data.msg);
       const res = await session.prompt(config.overtime);
       if (res === void 0)
       {
