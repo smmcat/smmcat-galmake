@@ -366,7 +366,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       config.debug && console.log(JSON.stringify(this.mapInfo, null, " "));
       config.debug && console.log("[smmcat-galmake]:剧本姬构建完成");
     },
-    getMenu(goal, callback)
+    async getMenu(goal, callback)
     {
       let selectMenu = this.mapInfo;
       let end = false;
@@ -381,7 +381,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       }
       let title = null;
       const indexList = goal.split("-").map((item) => Number(item));
-      indexList.some((item: number) =>
+      indexList.some(async (item: number) =>
       {
         name2 = selectMenu[item - 1].name;
         indePath.push(item);
@@ -392,7 +392,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           selectMenu = void 0;
           indePath.pop();
           PathName.pop();
-          callback && callback({ name: name2, selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+          await callback && await callback({ name: name2, selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
           return true;
         }
         if (selectMenu && typeof selectMenu === "object")
@@ -401,18 +401,18 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           if (typeof selectMenu === "string")
           {
             end = true;
-            callback && callback({ name: name2, selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+            await callback && await callback({ name: name2, selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
             return true;
           }
         }
       });
-      end || callback && callback({ name: name2, selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+      end || await callback && await callback({ name: name2, selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
     },
     // 菜单渲染到界面
-    markScreen(pathLine: string, session: Session)
+    async markScreen(pathLine: string, session: Session)
     {
       let goalItem = { change: false };
-      this.getMenu(pathLine, async (ev) =>
+      await this.getMenu(pathLine, async (ev) =>
       {
         if (ev.end)
         {
@@ -462,13 +462,13 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         }
         goalItem = ev;
       });
-      return this.format(goalItem, session);
+      return await this.format(goalItem, session);
     },
     // 格式化界面输出
-    format(goalItem, session: Session)
+    async format(goalItem, session: Session)
     {
       if (goalItem.change)
-        return this.markScreen(userBranch[session.userId].join("-"), session);
+        return await this.markScreen(userBranch[session.userId].join("-"), session);
       if (!goalItem.selectMenu)
       {
         return {
@@ -608,11 +608,11 @@ ${goalItem.crumbs}
     {
       config.debug && console.log("当前持有：" + takeIng[session.userId]);
       config.debug && console.log("已获取/失去过道具的分支：" + onlyOneTemp[session.userId]);
-      let data = galplayMap.markScreen(userBranch[session.userId].join("-"), session);
+      let data = await galplayMap.markScreen(userBranch[session.userId].join("-"), session);
       if (data.err)
       {
         userBranch[session.userId].pop();
-        let data2 = galplayMap.markScreen(userBranch[session.userId].join("-"), session);
+        let data2 = await galplayMap.markScreen(userBranch[session.userId].join("-"), session);
         await session.send("操作不对，请重新输入：\n注意需要输入指定范围的下标");
         await session.send(data2.msg);
       }
