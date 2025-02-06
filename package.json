@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-smmcat-galmake",
   "description": "通过创建文件夹制作galgame多分支剧情",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
