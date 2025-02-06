@@ -395,9 +395,12 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           await callback && await callback({ name: name2, selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
           return true;
         }
+
         if (selectMenu && typeof selectMenu === "object")
         {
           selectMenu = selectMenu[item - 1].child;
+          // this.mapInfo = selectMenu;
+
           if (typeof selectMenu === "string")
           {
             end = true;
