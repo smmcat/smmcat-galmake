@@ -16,5 +16,11 @@
   ],
   "peerDependencies": {
     "koishi": "^4.18.0"
+  },
+  "koishi":{
+    "service": {
+      "required": ["localstorage"],
+      "optional": ["word"]
+    }
   }
 }

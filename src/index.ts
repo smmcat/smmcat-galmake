@@ -741,15 +741,4 @@ ${goalItem.crumbs}
     }).join("\n");
     await session.send("你当前获得的成就和对应获取时间如下:\n\n" + msg);
   });
-
-  // DEV
-  ctx.command("a").action(async ({ session }) =>
-  {
-    userBranch[session.userId] = [];
-    onlyOneTemp[session.userId] = [];
-    takeIng[session.userId] = {};
-    await localStoreData.clearLocalStoreData(session.userId);
-    await session.send("已重置当前进度");
-
-  });
 }
