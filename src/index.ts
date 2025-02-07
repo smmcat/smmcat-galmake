@@ -420,7 +420,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
     {
       if (ctx.word)
       {
-        const msg = await ctx.word.driver.parMsg(message.concat(), { saveDB: "smm" }, session);
+        const msg = await ctx.word.driver.parMsg(message.concat(), { saveDB: config.wordSave }, session);
         if (msg)
         {
           return msg;
