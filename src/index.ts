@@ -428,6 +428,8 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         {
           return message;
         }
+      } else {
+        return message;
       }
     },
     async getMenu(goal: string, callback?: (event) => Promise<void>)
