@@ -34,8 +34,7 @@ export const usage = `
 如果你对 galgame 感兴趣，或者想一起写剧本；[欢迎加群](https://qm.qq.com/q/i1OHiS7aD0)
 `;
 
-export interface Config
-{
+export interface Config {
   mapAddress: string;
   overtime: number;
   debug: boolean;
@@ -58,10 +57,8 @@ export const inject = {
   optional: ["word"]
 };
 
-export function apply(ctx: Context, config: Config)
-{
-  const addTemplate = async (upath: string) =>
-  {
+export function apply(ctx: Context, config: Config) {
+  const addTemplate = async (upath: string) => {
     const obj = [
       {
         name: "1.剧本演示",
@@ -182,11 +179,9 @@ export function apply(ctx: Context, config: Config)
         title: '<img src="https://forum.koishi.xyz/user_avatar/forum.koishi.xyz/lizard/96/2522_2.png" />\r\n你在 %getTime% 时候被车撞 s 了嗯...\r\n这是一个异世界，你果然...又被撞到异世界里了。依然到了异世界，那就拿出真本事吧！'
       }
     ];
-    try
-    {
+    try {
       createDirMapByObject(obj, upath);
-    } catch (error)
-    {
+    } catch (error) {
       console.log(error);
     }
   };
@@ -199,26 +194,21 @@ export function apply(ctx: Context, config: Config)
     // 获取当前时间
     getTime: () => (new Date()).toLocaleString().replaceAll("/", "-"),
     // 获取随机动漫图
-    rollACGImg()
-    {
+    rollACGImg() {
       return h.image("https://www.dmoe.cc/random.php");
     },
     // 跳转分支
-    jumpBranch(session: Session, params: string, ev)
-    {
+    jumpBranch(session: Session, params: string, ev) {
       userBranch[session.userId] = params?.split("-") || [];
       ev.change = true;
     },
     // 通过交出持有物跳转分支 xxx>4?1-1-1
-    jumpByLostProp(session: Session, params: string, ev)
-    {
+    jumpByLostProp(session: Session, params: string, ev) {
       const dict = params.split("?");
-      if (this.lostProp(session, dict[0], ev))
-      {
+      if (this.lostProp(session, dict[0], ev)) {
         userBranch[session.userId] = dict[1]?.split("-") || [];
         ev.change = true;
-      } else
-      {
+      } else {
         userBranch[session.userId].pop();
         ev.change = true;
         const [prop, num] = dict[0].split("*");
@@ -227,16 +217,13 @@ tip:需要提交${num || 1}个${prop}` : ""));
       }
     },
     // 通过查询是否存在持有物跳转分支 xxx>4?1-1-1
-    jumpByCheckProp(session: Session, params: string, ev)
-    {
+    jumpByCheckProp(session: Session, params: string, ev) {
       const dict = params.split("?");
       const [prop, num] = dict[0].split("*");
-      if (this.querymentProp(session, prop, num || 1))
-      {
+      if (this.querymentProp(session, prop, num || 1)) {
         userBranch[session.userId] = dict[1]?.split("-") || [];
         ev.change = true;
-      } else
-      {
+      } else {
         userBranch[session.userId].pop();
         ev.change = true;
         session.send("不满足要求，请重新选择。" + (config.tipsProp ? `
@@ -244,16 +231,13 @@ tip:需要持有${num || 1}个${prop}` : ""));
       }
     },
     // 通过查询是否不存在持有物跳转分支 xxx*4?1-1-1
-    jumpByNoneProp(session: Session, params: string, ev)
-    {
+    jumpByNoneProp(session: Session, params: string, ev) {
       const dict = params.split("?");
       const [prop, num] = dict[0].split("*");
-      if (!this.querymentProp(session, prop, num || 1))
-      {
+      if (!this.querymentProp(session, prop, num || 1)) {
         userBranch[session.userId] = dict[1]?.split("-") || [];
         ev.change = true;
-      } else
-      {
+      } else {
         userBranch[session.userId].pop();
         ev.change = true;
         session.send("不满足要求，请重新选择。" + (config.tipsProp ? `
@@ -261,89 +245,71 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       }
     },
     // 通过查询是否不存在持有物则跳转分支，否则继续前进 xxx*4?1-1-1
-    jumpByNoneProp_NotBack(session: Session, params: string, ev)
-    {
+    jumpByNoneProp_NotBack(session: Session, params: string, ev) {
       const dict = params.split("?");
       const [prop, num] = dict[0].split("*");
-      if (!this.querymentProp(session, prop, num || 1))
-      {
+      if (!this.querymentProp(session, prop, num || 1)) {
         userBranch[session.userId] = dict[1]?.split("-") || [];
         ev.change = true;
       }
     },
     // 获得道具 |xxx*4
-    getProp(session: Session, params: string, ev)
-    {
+    getProp(session: Session, params: string, ev) {
       const item = params.split("*");
       const prop = item[0];
       const num = isNaN(Number(item[1])) ? 1 : Number(item[1]);
-      if (!onlyOneTemp[session.userId])
-      {
+      if (!onlyOneTemp[session.userId]) {
         onlyOneTemp[session.userId] = [];
       }
-      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-")))
-      {
-        if (!takeIng[session.userId])
-        {
+      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-"))) {
+        if (!takeIng[session.userId]) {
           takeIng[session.userId] = {};
         }
         onlyOneTemp[session.userId].push(userBranch[session.userId].join("-"));
-        if (takeIng[session.userId][prop] === void 0)
-        {
+        if (takeIng[session.userId][prop] === void 0) {
           takeIng[session.userId][prop] = num;
-        } else
-        {
+        } else {
           takeIng[session.userId][prop] += num;
         }
         config.showFaQ && session.send("你在事件中得到了" + (num || 1) + `个${prop}`);
       }
     },
     // 获得多个道具 |xxx*2+xxx*4
-    getMoreProp(session: Session, params: string, ev)
-    {
+    getMoreProp(session: Session, params: string, ev) {
       const moreItem = params.split("+");
       const msgList = [];
-      moreItem.map((params) =>
-      {
+      moreItem.map((params) => {
         const item = params.split("*");
         const prop = item[0];
         const num = isNaN(Number(item[1])) ? 1 : Number(item[1]);
-        if (!onlyOneTemp[session.userId])
-        {
+        if (!onlyOneTemp[session.userId]) {
           onlyOneTemp[session.userId] = [];
         }
-        if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-")))
-        {
-          if (!takeIng[session.userId])
-          {
+        if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-"))) {
+          if (!takeIng[session.userId]) {
             takeIng[session.userId] = {};
           }
-          if (takeIng[session.userId][prop] === void 0)
-          {
+          if (takeIng[session.userId][prop] === void 0) {
             takeIng[session.userId][prop] = num;
-          } else
-          {
+          } else {
             takeIng[session.userId][prop] += num;
           }
-          msgList.push("你在事件中得到了" + (num || 1) + `个${prop}`);
+          msgList.push(`你在事件中${num > 0 ? '得到' : '失去'}` + (Math.abs(num || 1)) + `个${prop}`);
         }
       });
       config.showFaQ && session.send(msgList.join('\n'));
       onlyOneTemp[session.userId].push(userBranch[session.userId].join("-"));
     },
     // 失去某物 |xxx>1
-    lostProp(session: Session, params: string, ev)
-    {
+    lostProp(session: Session, params: string, ev) {
       const item = params.split("*");
       const prop = item[0];
       const num = isNaN(Number(item[1])) ? 1 : Number(item[1]);
-      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-")))
-      {
+      if (!onlyOneTemp[session.userId]?.includes(userBranch[session.userId].join("-"))) {
         if (!this.querymentProp(session, prop, num || 1))
           return false;
         takeIng[session.userId][prop] -= num;
-        if (!takeIng[session.userId][prop])
-        {
+        if (!takeIng[session.userId][prop]) {
           delete takeIng[session.userId][prop];
         }
         onlyOneTemp[session.userId].push(userBranch[session.userId].join("-"));
@@ -352,31 +318,24 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       }
     },
     // 判断是否存在某物
-    querymentProp(session: Session, prop: string | number, num = 1)
-    {
-      if (!takeIng[session.userId])
-      {
+    querymentProp(session: Session, prop: string | number, num = 1) {
+      if (!takeIng[session.userId]) {
         takeIng[session.userId] = {};
       }
-      if (takeIng[session.userId][prop] === void 0)
-      {
+      if (takeIng[session.userId][prop] === void 0) {
         return false;
       }
-      if (takeIng[session.userId][prop] < Number(num))
-      {
+      if (takeIng[session.userId][prop] < Number(num)) {
         return false;
       }
       return true;
     },
     // 获得成就 |初学者
-    getAchievements(session: Session, prop: string | number)
-    {
-      if (!achievements[session.userId])
-      {
+    getAchievements(session: Session, prop: string | number) {
+      if (!achievements[session.userId]) {
         achievements[session.userId] = {};
       }
-      if (!achievements[session.userId][prop])
-      {
+      if (!achievements[session.userId][prop]) {
         achievements[session.userId][prop] = this.getTime();
         localStoreData.setLocalStoreData(session.userId);
         session.send(`恭喜你获得成就！【${prop}】
@@ -390,80 +349,64 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
     upath: path.join(ctx.baseDir, config.mapAddress),
     mapInfo: [],
     // 初始化路径
-    async initPath()
-    {
-      try
-      {
+    async initPath() {
+      try {
         await fs.access(this.upath);
-      } catch (error)
-      {
-        try
-        {
+      } catch (error) {
+        try {
           await fs.mkdir(this.upath, { recursive: true });
           await addTemplate(this.upath);
-        } catch (error2)
-        {
+        } catch (error2) {
           console.error(error2);
         }
       }
     },
     // 初始化菜单结构
-    async init()
-    {
+    async init() {
       await this.initPath();
       this.mapInfo = createPathMapByDir(this.upath);
       config.debug && console.log(JSON.stringify(this.mapInfo, null, " "));
       config.debug && console.log("[smmcat-galmake]:剧本姬构建完成");
     },
     // 词库的san check
-    async wordSanCheck(message: string, session: Session)
-    {
-      if (ctx.word)
-      {
+    async wordSanCheck(message: string, session: Session) {
+      if (ctx.word) {
         const msg = await ctx.word.driver.parMsg(message.concat(), { saveDB: config.wordSave }, session);
-        if (msg)
-        {
+        if (msg) {
           return msg;
-        } else
-        {
+        } else {
           return message;
         }
       } else {
         return message;
       }
     },
-    async getMenu(goal: string, callback?: (event) => Promise<void>)
-    {
+    async getMenu(goal: string, callback?: (event) => Promise<void>) {
       let selectMenu = this.mapInfo;
       let end = false;
       let indePath = [];
       let PathName = [];
       let change = false;
-      if (!goal)
-      {
+      if (!goal) {
         await callback && await callback({ selectMenu, lastPath: "", change, crumbs: "", end });
         return;
       }
       let title = null;
       const indexList = goal.split("-").map((item) => Number(item));
-      for (const item of indexList)
-      {
+      for (const item of indexList) {
         indePath.push(item);
         PathName.push(selectMenu[item - 1]?.name.length > 6 ? selectMenu[item - 1]?.name.slice(0, 6) + "..." : selectMenu[item - 1]?.name);
         title = selectMenu[item - 1]?.title || null;
-        if (selectMenu.length < item)
-        {
+        if (selectMenu.length < item) {
           selectMenu = void 0;
           indePath.pop();
           PathName.pop();
           await callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
           break;
         }
-        if (selectMenu && typeof selectMenu === "object")
-        {
+        if (selectMenu && typeof selectMenu === "object") {
           selectMenu = selectMenu[item - 1].child;
-          if (typeof selectMenu === "string")
-          {
+          if (typeof selectMenu === "string") {
             end = true;
             await callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
             break;
@@ -473,36 +416,28 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       end || await callback && await callback({ selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
     },
     // 菜单渲染到界面
-    async markScreen(pathLine: string, session: Session)
-    {
+    async markScreen(pathLine: string, session: Session) {
       let goalItem = { change: false };
       // 查找对应菜单 获取回调
-      await this.getMenu(pathLine, async (ev: any) =>
-      {
+      await this.getMenu(pathLine, async (ev: any) => {
         // 分析转义符 %type%
-        if (ev.end)
-        {
+        if (ev.end) {
           ev.selectMenu = await this.wordSanCheck(ev.selectMenu, session);
-          ev.selectMenu = ev.selectMenu.replace(/%([^%]*)%/g, (match, capture) =>
-          {
+          ev.selectMenu = ev.selectMenu.replace(/%([^%]*)%/g, (match, capture) => {
             let result = '';
             const temp = capture.split('|');
-            if (transferTool[temp[0]])
-            {
+            if (transferTool[temp[0]]) {
               result = transferTool[temp[0]](session, temp[1], ev) || '';
             }
             return result;
           });
         }
-        if (ev.title)
-        {
+        if (ev.title) {
           ev.title = await this.wordSanCheck(ev.title, session);
-          ev.title = ev.title.replace(/%([^%]*)%/g, (match, capture) =>
-          {
+          ev.title = ev.title.replace(/%([^%]*)%/g, (match, capture) => {
             let result = '';
             const temp = capture.split('|');
-            if (transferTool[temp[0]])
-            {
+            if (transferTool[temp[0]]) {
               result = transferTool[temp[0]](session, temp[1], ev) || '';
             }
             return result;
@@ -513,26 +448,22 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       return await this.format(goalItem, session);
     },
     // 格式化界面输出
-    async format(goalItem, session: Session)
-    {
+    async format(goalItem, session: Session) {
       if (goalItem.change)
         return await this.markScreen(userBranch[session.userId].join("-"), session);
-      if (!goalItem.selectMenu)
-      {
+      if (!goalItem.selectMenu) {
         return {
           msg: "",
           err: true
         };
       }
-      if (goalItem.name?.includes("__discard"))
-      {
+      if (goalItem.name?.includes("__discard")) {
         return {
           msg: "",
           err: true
         };
       }
-      if (goalItem.end)
-      {
+      if (goalItem.end) {
         return {
           msg: (h.select(goalItem.selectMenu || "", "img").length > 0 ? "" : "【内容】\n") + (goalItem.selectMenu ? `${goalItem.selectMenu.replace(/\\/g, "")}
 ` : "") + `
@@ -544,8 +475,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           err: false,
           end: goalItem.end
         };
-      } else
-      {
+      } else {
         return {
           msg: (h.select(goalItem.title || "", "img").length > 0 ? "" : "【内容】\n") + (goalItem.title ? `${goalItem.title.replace(/\\/g, "")}
 
@@ -564,30 +494,22 @@ ${goalItem.crumbs}
   const localStoreData = {
     upath: "",
     ready: false,
-    async init()
-    {
+    async init() {
       this.upath = path.join(ctx.localstorage.basePath, "./smm-galmark");
-      try
-      {
+      try {
         await fs.access(this.upath);
-      } catch (error)
-      {
-        try
-        {
+      } catch (error) {
+        try {
           await fs.mkdir(this.upath, { recursive: true });
-        } catch (error2)
-        {
+        } catch (error2) {
           console.error(error2);
         }
       }
       const dirList = await fs.readdir(this.upath);
       const dict = { ok: 0, err: 0 };
-      const eventList = dirList.map((item) =>
-      {
-        return new Promise(async (resolve, rejects) =>
-        {
-          try
-          {
+      const eventList = dirList.map((item) => {
+        return new Promise(async (resolve, rejects) => {
+          try {
             const res = JSON.parse(await ctx.localstorage.getItem(`smm-galmark/${item}`) || "{}");
             userBranch[item] = res.userBranch;
             onlyOneTemp[item] = res.onlyOneTemp;
@@ -595,8 +517,7 @@ ${goalItem.crumbs}
             achievements[item] = res.achievements;
             dict.ok++;
             resolve(true);
-          } catch (error)
-          {
+          } catch (error) {
             dict.err++;
             resolve(true);
           }
@@ -607,8 +528,7 @@ ${goalItem.crumbs}
       config.debug && console.log(`[smmcat-galmark]:读取用户本地数据完成，成功${dict.ok}个，失败${dict.err}个`);
     },
     // 记录存档
-    async setLocalStoreData(userId)
-    {
+    async setLocalStoreData(userId) {
       if (!this.ready || !userId)
         return;
       const temp = {
@@ -621,8 +541,7 @@ ${goalItem.crumbs}
       await ctx.localstorage.setItem(`smm-galmark/${userId}`, JSON.stringify(temp));
     },
     // 清除记录
-    async clearLocalStoreData(userId)
-    {
+    async clearLocalStoreData(userId) {
       if (!this.ready || !userId)
         return;
       const temp = {
@@ -635,29 +554,24 @@ ${goalItem.crumbs}
     }
   };
 
-  ctx.on("ready", () =>
-  {
+  ctx.on("ready", () => {
     galplayMap.init();
     localStoreData.init();
   });
 
   ctx.command("剧本姬");
 
-  ctx.command("剧本姬/开始剧情").action(async ({ session }) =>
-  {
-    if (!userBranch[session.userId])
-    {
+  ctx.command("剧本姬/开始剧情").action(async ({ session }) => {
+    if (!userBranch[session.userId]) {
       userBranch[session.userId] = [];
       onlyOneTemp[session.userId] = [];
       takeIng[session.userId] = {};
     }
-    while (true)
-    {
+    while (true) {
       config.debug && console.log("当前持有：" + takeIng[session.userId]);
       config.debug && console.log("已获取/失去过道具的分支：" + onlyOneTemp[session.userId]);
       let data = await galplayMap.markScreen(userBranch[session.userId].join("-"), session);
-      if (data.err)
-      {
+      if (data.err) {
         userBranch[session.userId].pop();
         let data2 = await galplayMap.markScreen(userBranch[session.userId].join("-"), session);
         await session.send("操作不对，请重新输入：\n注意需要输入指定范围的下标");
@@ -667,42 +581,35 @@ ${goalItem.crumbs}
       await session.send(data.msg);
 
       const res = await session.prompt(config.overtime);
-      if (res === void 0)
-      {
+      if (res === void 0) {
         await localStoreData.setLocalStoreData(session.userId);
         await session.send("长时间未操作，退出剧本，记录保留");
         break;
       }
-      if (!res.trim() || isNaN(Number(res)) && res.toLowerCase() !== "q" && res.toLowerCase() !== "p")
-      {
+      if (!res.trim() || isNaN(Number(res)) && res.toLowerCase() !== "q" && res.toLowerCase() !== "p") {
         await session.send("请输入指定序号下标");
         continue;
       }
-      if (res == "0")
-      {
+      if (res == "0") {
         await localStoreData.setLocalStoreData(session.userId);
         await session.send("已退出剧本，记录保留");
         break;
       }
       userBranch[session.userId].push(res);
-      if (data.end)
-      {
+      if (data.end) {
         await session.send("已经到底了!");
         userBranch[session.userId].pop();
       }
     }
   });
 
-  ctx.command("剧本姬/重置进度").action(async ({ session }) =>
-  {
-    if (!userBranch[session.userId]?.length)
-    {
+  ctx.command("剧本姬/重置进度").action(async ({ session }) => {
+    if (!userBranch[session.userId]?.length) {
       await session.send("你的当前进度不需要重置");
     }
     await session.send("是否要重置当前进度？\n 20秒回复：是/否");
     const res = await session.prompt(2e4);
-    if (res === "是")
-    {
+    if (res === "是") {
       userBranch[session.userId] = [];
       onlyOneTemp[session.userId] = [];
       takeIng[session.userId] = {};
@@ -711,32 +618,26 @@ ${goalItem.crumbs}
     }
   });
 
-  ctx.command("剧本姬/当前持有").action(async ({ session }) =>
-  {
+  ctx.command("剧本姬/当前持有").action(async ({ session }) => {
     const temp = takeIng[session.userId];
-    if (!temp || !Object.keys(temp).length)
-    {
+    if (!temp || !Object.keys(temp).length) {
       await session.send("你当进度中前还没有任何道具持有...");
       return;
     }
-    const msg = Object.keys(temp).map((item) =>
-    {
+    const msg = Object.keys(temp).map((item) => {
       return `【${item}】单位：${temp[item]}`;
     }).join("\n");
     await session.send("你当前进度中持有:\n\n" + msg);
   });
 
 
-  ctx.command("剧本姬/剧本成就").action(async ({ session }) =>
-  {
+  ctx.command("剧本姬/剧本成就").action(async ({ session }) => {
     const temp = achievements[session.userId];
-    if (!temp || !Object.keys(temp).length)
-    {
+    if (!temp || !Object.keys(temp).length) {
       await session.send("你当还没有得到任何成就...");
       return;
     }
-    const msg = Object.keys(temp).map((item) =>
-    {
+    const msg = Object.keys(temp).map((item) => {
       return `【${item}】：${temp[item]}`;
     }).join("\n");
     await session.send("你当前获得的成就和对应获取时间如下:\n\n" + msg);
