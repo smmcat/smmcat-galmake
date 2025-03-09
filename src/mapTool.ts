@@ -21,6 +21,11 @@ export const createPathMapByDir = (folderPath: string): Folder[] => {
         const filePath: string = path.join(folderPath, file);
         const stat: fs.Stats = fs.statSync(filePath);
 
+        files.sort((a, b) =>
+        {
+            return parseInt(a.split('.')[0]) - parseInt(b.split('.')[0]);
+        });
+
         if (stat.isDirectory()) {
             let folder: Folder = { name: file, child: [] };
 
