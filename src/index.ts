@@ -9,15 +9,21 @@ import * as path from 'path';
 export const name = 'smmcat-galmake';
 
 export const usage = `
+
 通过创建文件夹生成对应映射关系的多分支简单galgame游戏制作插件
 
- - result.text 中的内容代表最终的结局（会忽略同级并同级后续的文件夹）
- - title.text 中的内容代表该层级剧情的描述
+将文件夹添加关键字 __discard 时，该选项不可见，并且不能进入
+
+ - result.txt 中的内容代表最终的结局（会忽略同级并同级后续的文件夹）
+ - title.txt 中的内容代表该层级剧情的描述
 
 只要上述文件放置在对应文件夹中，就会有对应的效果
 
+
 通过 %标识符% 去实现 跳转分支、条件跳转、获得道具、失去道具、判断道具是否持有 等功能
 
+
+- %jumpBranch% 标识符，无要求，直接跳转指定分支 举例：%jumpBranch|1-3-1%
 - %jumpByLostProp% 标识符，通过交出持有物才可跳转分支 举例：参数示例：%jumpByLostProp|金币*4?1-1-1%
 - %jumpByCheckProp%标识符，通过查询是否携带持有物才可跳转分支，参数示例：%jumpByCheckProp|金币*4?1-1-1%
 - %getProp%标识符，获得道具 参数示例：%getProp|金币*4%
@@ -383,37 +389,51 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
     },
     async getMenu(goal: string, callback?: (event) => Promise<void>) {
       let selectMenu = this.mapInfo;
-      let end = false;
+      let end = false; // 是否结尾
       let indePath = [];
-      let PathName = [];
-      let change = false;
+      let PathName = []; // 路径记录
+      let selectItem = null // 选择的选项
+      let change = false; // 重新渲染界面
       if (!goal) {
-        await callback && await callback({ selectMenu, lastPath: "", change, crumbs: "", end });
+        callback && await callback({ selectMenu, lastPath: "", change, crumbs: "", end });
         return;
       }
       let title = null;
       const indexList = goal.split("-").map((item) => Number(item));
       for (const item of indexList) {
+        selectItem = selectMenu[item - 1]?.name
+
         indePath.push(item);
         PathName.push(selectMenu[item - 1]?.name.length > 6 ? selectMenu[item - 1]?.name.slice(0, 6) + "..." : selectMenu[item - 1]?.name);
         title = selectMenu[item - 1]?.title || null;
+
+        // 是否选择的下标大于目标选项栏
         if (selectMenu.length < item) {
           selectMenu = void 0;
           indePath.pop();
           PathName.pop();
-          await callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+          callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
           break;
         }
+
+        // 是否是结尾剧情
         if (selectMenu && typeof selectMenu === "object") {
           selectMenu = selectMenu[item - 1].child;
           if (typeof selectMenu === "string") {
             end = true;
-            await callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+            callback && await callback({ selectMenu, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
             break;
           }
         }
       }
-      end || await callback && await callback({ selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
+      // 选择的是弃用选项
+      if (selectItem?.includes('__discard')) {
+        selectMenu = void 0;
+        indePath.pop();
+        PathName.pop();
+      }
+      // 是否正常流程
+      end || callback && await callback({ selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
     },
     // 菜单渲染到界面
     async markScreen(pathLine: string, session: Session) {
@@ -452,12 +472,6 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
       if (goalItem.change)
         return await this.markScreen(userBranch[session.userId].join("-"), session);
       if (!goalItem.selectMenu) {
-        return {
-          msg: "",
-          err: true
-        };
-      }
-      if (goalItem.name?.includes("__discard")) {
         return {
           msg: "",
           err: true
@@ -568,7 +582,7 @@ ${goalItem.crumbs}
       takeIng[session.userId] = {};
     }
     while (true) {
-      config.debug && console.log("当前持有：" + takeIng[session.userId]);
+      config.debug && console.log("当前持有：" + JSON.stringify(takeIng[session.userId]));
       config.debug && console.log("已获取/失去过道具的分支：" + onlyOneTemp[session.userId]);
       let data = await galplayMap.markScreen(userBranch[session.userId].join("-"), session);
       if (data.err) {
@@ -579,7 +593,6 @@ ${goalItem.crumbs}
       }
 
       await session.send(data.msg);
-
       const res = await session.prompt(config.overtime);
       if (res === void 0) {
         await localStoreData.setLocalStoreData(session.userId);
@@ -606,6 +619,7 @@ ${goalItem.crumbs}
   ctx.command("剧本姬/重置进度").action(async ({ session }) => {
     if (!userBranch[session.userId]?.length) {
       await session.send("你的当前进度不需要重置");
+      return
     }
     await session.send("是否要重置当前进度？\n 20秒回复：是/否");
     const res = await session.prompt(2e4);
