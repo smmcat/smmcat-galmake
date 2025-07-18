@@ -46,6 +46,7 @@ export interface Config {
   debug: boolean;
   tipsProp: boolean;
   showFaQ: boolean;
+  showSelect: boolean;
   wordSave: string;
 }
 
@@ -54,8 +55,10 @@ export const Config: Schema<Config> = Schema.object({
   overtime: Schema.number().default(3e4).description("对话访问的超时时间"),
   debug: Schema.boolean().default(false).description("日志查看更多信息"),
   tipsProp: Schema.boolean().default(true).description("当不满足要求将提示所需要的物品"),
-  showFaQ: Schema.boolean().default(true).description("显示所有 获得/失去 道具提示"),
-  wordSave: Schema.string().default("smm").description("词库保存的数据库")
+  showSelect: Schema.boolean().default(false).description('通知玩家每次选择的分支'),
+  showFaQ: Schema.boolean().default(true).description("通知所有 获得/失去 道具提示"),
+  wordSave: Schema.string().default("smm").description("词库保存的数据库"),
+
 });
 
 export const inject = {
@@ -387,6 +390,18 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         return message;
       }
     },
+    // 获取当前选择的选项
+    getSelectMenu(goal: string[]) {
+      let selectMenu = this.mapInfo;
+      let seletGoal = goal.map((i) => Number(i) - 1)
+      let title = ''
+      for (const index of seletGoal) {
+        if (!selectMenu[index]?.child) break
+        title = selectMenu[index]?.name || ''
+        selectMenu = selectMenu[index].child
+      }
+      return title
+    },
     async getMenu(goal: string, callback?: (event) => Promise<void>) {
       let selectMenu = this.mapInfo;
       let end = false; // 是否结尾
@@ -404,7 +419,7 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
         selectItem = selectMenu[item - 1]?.name
 
         indePath.push(item);
-        PathName.push(selectMenu[item - 1]?.name.length > 6 ? selectMenu[item - 1]?.name.slice(0, 6) + "..." : selectMenu[item - 1]?.name);
+        PathName.push(selectMenu[item - 1]?.name.length > 6 ? selectMenu[item - 1]?.name.replace(/^\d+\.\s*|__discard/g, '').slice(0, 6) + "..." : selectMenu[item - 1]?.name.replace(/^\d+\.\s*|__discard/g, ''));
         title = selectMenu[item - 1]?.title || null;
 
         // 是否选择的下标大于目标选项栏
@@ -426,12 +441,12 @@ tip:需要不持有超过${num || 1}个${prop}` : ""));
           }
         }
       }
-      // 选择的是弃用选项
-      if (selectItem?.includes('__discard')) {
-        selectMenu = void 0;
-        indePath.pop();
-        PathName.pop();
-      }
+      // // 选择的是弃用选项
+      // if (selectItem?.includes('__discard')) {
+      //   selectMenu = void 0;
+      //   indePath.pop();
+      //   PathName.pop();
+      // }
       // 是否正常流程
       end || callback && await callback({ selectMenu, title, lastPath: indePath.join("-"), change, crumbs: PathName.slice(-3).reverse().join("<"), end });
     },
@@ -599,6 +614,7 @@ ${goalItem.crumbs}
         await session.send("长时间未操作，退出剧本，记录保留");
         break;
       }
+
       if (!res.trim() || isNaN(Number(res)) && res.toLowerCase() !== "q" && res.toLowerCase() !== "p") {
         await session.send("请输入指定序号下标");
         continue;
@@ -608,6 +624,12 @@ ${goalItem.crumbs}
         await session.send("已退出剧本，记录保留");
         break;
       }
+      const _option = galplayMap.getSelectMenu([...userBranch[session.userId], res])
+      if (_option.includes('__discard')) {
+        await session.send("操作不对，请重新输入：\n注意需要输入指定范围的下标");
+        continue;
+      }
+      config.showSelect && await session.send(`你选择了：\n【${_option.replace(/^\d+\.\s*/, "")}】`)
       userBranch[session.userId].push(res);
       if (data.end) {
         await session.send("已经到底了!");
